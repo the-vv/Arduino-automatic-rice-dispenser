@@ -5,7 +5,7 @@
 
 // PARAMETERS
 #define calibration_factor -7050.0 // This value is obtained using the SparkFun_HX711_Calibration sketch
-#define DISPENSER_WEIGHT 5         // This is the weight of the rice that will be dispensed in kg
+#define DISPENSER_WEIGHT 2         // This is the weight of the rice that will be dispensed in kg
 #define INITIAL_LOADING_DELAY 5000
 #define AUTO_MODE_EXCHANGE_DELAY 20000 //
 
@@ -93,6 +93,21 @@ void loop()
     } else {
       showInDisplay("Waiting For", "Next Dispenser");
     }
+  }
+
+  String lastmode = currentMode;
+  bool isAutoModeEnabled = digitalRead(AUTO_MODE_SWITCH) == LOW;
+  if (!isAutoModeEnabled)
+  {
+    currentMode = "WEIGHTING";
+  }
+  else
+  {
+    currentMode = "AUTO";
+  }
+  if (currentMode != lastmode)
+  {
+    lcd.clear();
   }
 
   if (currentMode == "AUTO")
