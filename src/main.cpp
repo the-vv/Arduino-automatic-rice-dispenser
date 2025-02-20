@@ -2,19 +2,15 @@
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 #include "HX711.h"
+#include <Valve.h>
+#include <Automatic.h>
+#include <PressButton.h>
 
 // PARAMETERS
 #define calibration_factor -7050.0 // This value is obtained using the SparkFun_HX711_Calibration sketch
 #define DISPENSER_WEIGHT 2         // This is the weight of the rice that will be dispensed in kg
 #define INITIAL_LOADING_DELAY 5000
 #define AUTO_MODE_EXCHANGE_DELAY 20000 //
-
-// // initialize the liquid crystal library
-// // the first parameter is  the I2C address
-// // the second parameter is how many rows are on your screen
-// // the  third parameter is how many columns are on your screen
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-HX711 scale;
 
 #define LOADCELL_DOUT_PIN 3
 #define LOADCELL_SCK_PIN 2
@@ -25,198 +21,215 @@ HX711 scale;
 #define PLUS_SWITCH 10             // this will increase the weight in manual dispenser mode
 #define MINUS_SWITCH 11            // this will decrease the weight in manual dispenser mode
 #define MANUAL_DISPENSER_SWITCH 12 // this will turn on the manual dispenser mode
+#define VALVE_PIN 13               // this is the pin for the valve
+
+// initialize the liquid crystal library
+// the first parameter is  the I2C address
+// the second parameter is how many rows are on your screen
+// the  third parameter is how many columns are on your screen
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+HX711 scale;
+Valve valve(VALVE_PIN);
+Automatic automatic(VALVE_PIN, DISPENSER_WEIGHT, AUTO_MODE_EXCHANGE_DELAY);
+PressButton manualDispenserSwitch(MANUAL_DISPENSER_SWITCH); // Create a button instance
+PressButton plusSwitch(PLUS_SWITCH);                        // Create a button instance
+PressButton minusSwitch(MINUS_SWITCH);                      // Create a button instance
+
+enum Mode
+{
+    AUTO,
+    WEIGHTING,
+    MANUAL_SET,
+    MANUAL_DISPENSE
+};
 
 // Variables
 float currentWeight = 0.0;
-String currentMode = "AUTO"; // WEIGHTING, AUTO, MANUAL
-unsigned long motorStartTime = 0;
-bool waitingForExchange = false;
-unsigned long exchangeStartTime = 0;
-bool isValueOpen = false;
+Mode currentMode = AUTO;
 String lastDisplayText = "";
-String manualModeState = ""; // SET, DISPENSE
 int manualDispenserCustomWeight = 0;
 
 float getWeight();
-void open();
-void close();
-void processAutoMode(float weight);
 void showInDisplay(String, String);
+String getModeName(Mode mode);
 
 void setup()
 {
-  // Setup Pins
+    // Setup Pins
 
-  pinMode(AUTO_MODE_SWITCH, INPUT_PULLUP);
-  pinMode(MANUAL_MODE_SWITCH, INPUT_PULLUP);
-  pinMode(PLUS_SWITCH, INPUT_PULLUP);
-  pinMode(MINUS_SWITCH, INPUT_PULLUP);
-  pinMode(MANUAL_DISPENSER_SWITCH, INPUT_PULLUP);
+    pinMode(AUTO_MODE_SWITCH, INPUT_PULLUP);
+    pinMode(MANUAL_MODE_SWITCH, INPUT_PULLUP);
+    // pinMode(PLUS_SWITCH, INPUT_PULLUP);
+    // pinMode(MINUS_SWITCH, INPUT_PULLUP);
+    // pinMode(MANUAL_DISPENSER_SWITCH, INPUT_PULLUP);
 
-  Serial.begin(9600);
-  lcd.init();
-  lcd.backlight();
+    Serial.begin(9600);
+    lcd.init();
+    lcd.backlight();
 
-  // Setup Weighting Scale
-  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  scale.set_scale(calibration_factor); // This value is obtained by using the SparkFun_HX711_Calibration sketch
-  scale.tare();                        // Assuming there is no weight on the scale at start up, reset the scale to 0
+    // Setup Weighting Scale
+    scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+    scale.set_scale(calibration_factor); // This value is obtained by using the SparkFun_HX711_Calibration sketch
+    scale.tare();                        // Assuming there is no weight on the scale at start up, reset the scale to 0
 
-  // Startup
-  lcd.setCursor(0, 0);
-  lcd.print("Please Load Rice");
-  lcd.setCursor(0, 1);
-  lcd.print("Upto ");
-  lcd.print(DISPENSER_WEIGHT);
-  lcd.print(" kg");
-  // delay for 2 seconds
-  delay(INITIAL_LOADING_DELAY);
-  motorStartTime = millis();
-  open();
-  lcd.clear();
+    // Startup
+    lcd.setCursor(0, 0);
+    lcd.print("Please Load Rice");
+    lcd.setCursor(0, 1);
+    lcd.print("Upto ");
+    lcd.print(DISPENSER_WEIGHT);
+    lcd.print(" kg");
+    // delay for few seconds
+    delay(INITIAL_LOADING_DELAY);
+    valve.open();
+    lcd.clear();
 }
 void loop()
 {
-  float weight = getWeight();
+    float weight = getWeight();
+    if (currentMode == AUTO || currentMode == WEIGHTING)
+    {
+        showInDisplay("Mode: " + getModeName(currentMode), "Weight: " + String(weight));
+    }
 
-  if (!waitingForExchange && !manualModeState)
-  {
-    // lcd section
-    lcd.setCursor(0, 0);
-    lcd.print("Mode: ");
-    lcd.print(currentMode);
-    lcd.setCursor(0, 1);
-    lcd.print("Weight: ");
-    lcd.print(weight);
-  }
-  else if (currentMode == "AUTO")
-  {
-    if ((millis() - exchangeStartTime) < (AUTO_MODE_EXCHANGE_DELAY / 2))
+    // Check for mode changes and update the current mode
+    Mode lastMode = currentMode;
+    if (currentMode != MANUAL_SET && currentMode != MANUAL_DISPENSE)
     {
-      showInDisplay("Secure your", "Dispenser");
+        if (digitalRead(AUTO_MODE_SWITCH) == LOW) // check if the auto mode toggle is enabled.
+        {
+            currentMode = AUTO;
+        }
+        else // otherwise, switch to weighting mode
+        {
+            currentMode = WEIGHTING;
+        }
     }
-    else
+    else if (manualDispenserSwitch.isPressed())
     {
-      showInDisplay("Waiting For", "Next Dispenser");
+        // If the manual dispenser switch is pressed, switch to manual set mode
+        // If the current mode is already manual set, switch to manual dispense mode
+        // If the current mode is manual dispense, switch back to auto mode
+        if (currentMode == AUTO || currentMode == WEIGHTING)
+        {
+            currentMode = MANUAL_SET;
+        }
+        else if (currentMode == MANUAL_SET)
+        {
+            currentMode = MANUAL_DISPENSE;
+        }
+        else
+        {
+            currentMode = AUTO;
+        }
     }
-  }
+    if (lastMode != currentMode)
+    {
+        valve.close();
+        automatic.reset();
+        manualDispenserCustomWeight = 0;
+    }
 
-  String lastmode = currentMode;
-  bool isAutoModeEnabled = digitalRead(AUTO_MODE_SWITCH) == LOW;
-  if (!isAutoModeEnabled)
-  {
-    currentMode = "WEIGHTING";
-  }
-  else
-  {
-    currentMode = "AUTO";
-  }
-  if (currentMode != lastmode)
-  {
-    lcd.clear();
-    close();
-    manualDispenserCustomWeight = 0;
-    manualModeState = "";
-  }
-
-  if (currentMode == "AUTO")
-  {
-    processAutoMode(weight);
-  }
-  else if (currentMode == "WEIGHTING" || currentMode == "MANUAL")
-  {
-    if (manualModeState == "")
+    // Act based on the current mode
+    if (currentMode == AUTO)
     {
-      Serial.println("Manual Mode");
-      bool isManualDispenserEnabled = digitalRead(MANUAL_DISPENSER_SWITCH) == LOW;
-      if (isManualDispenserEnabled)
-      {
-        Serial.println("Manual Mode Enabled");
-        manualModeState = "SET";
-      }
+        automatic.processAutoMode(weight);
     }
-    if (manualModeState == "SET")
+    else if (currentMode == WEIGHTING)
     {
-      bool isManualModeEnabled = digitalRead(MANUAL_MODE_SWITCH) == LOW;
-      if (isManualModeEnabled)
-      {
-        manualModeState = "DISPENSE";
-      }
+        // Do nothing, because we are already displaying the weight
     }
-    if (manualModeState == "SET")
+    else if (currentMode == MANUAL_SET)
     {
-      showInDisplay("Weight: " + manualDispenserCustomWeight, "Press + or -");
-      if (digitalRead(PLUS_SWITCH) == LOW)
-      {
-        manualDispenserCustomWeight++;
-      }
-      if (digitalRead(MINUS_SWITCH) == LOW)
-      {
-        manualDispenserCustomWeight--;
-      }
+        if (plusSwitch.isPressed())
+        {
+            manualDispenserCustomWeight += 1;
+        }
+        else if (minusSwitch.isPressed())
+        {
+            manualDispenserCustomWeight -= 1;
+        }
+        showInDisplay("Set Weight: " + manualDispenserCustomWeight, "Press + or -");
     }
-    else if (manualModeState == "DISPENSE")
+    else if (currentMode == MANUAL_DISPENSE)
     {
-      showInDisplay("Mode: MANUAL", "Weight: " + manualDispenserCustomWeight);
-      if (weight >= manualDispenserCustomWeight)
-      {
-        close();
-        manualModeState = "SET";
-      }
+        showInDisplay("Mode: " + getModeName(currentMode), "Weight: " + String(weight) + "/" + manualDispenserCustomWeight);
+        if (weight >= manualDispenserCustomWeight)
+        {
+            valve.close();
+            currentMode= MANUAL_SET;
+            showInDisplay("Switched to " + getModeName(currentMode), "Press Dispense");
+            Serial.println("Switched to " + getModeName(currentMode) + "Because weight is greater than set weight");
+        }
     }
-  }
 }
 
 float getWeight()
 {
-  float scaleLbs = scale.get_units();
-  float scaleKg = scaleLbs * 0.453592;
-  return -scaleKg;
+    float scaleLbs = scale.get_units();
+    float scaleKg = scaleLbs * 0.453592;
+    return -scaleKg;
 }
 
 // Auto Mode Functionality
-void processAutoMode(float weight)
-{
-  if (waitingForExchange)
-  {
-    if ((millis() - exchangeStartTime) > AUTO_MODE_EXCHANGE_DELAY)
-    {
-      open();
-      waitingForExchange = false;
-      isValueOpen = true;
-      lcd.clear();
-    }
-  }
-  if (weight >= DISPENSER_WEIGHT)
-  {
-    close();
-    isValueOpen = false;
-    waitingForExchange = true;
-    exchangeStartTime = millis();
-  }
-}
+// void processAutoMode(float weight)
+// {
+//     if (waitingForExchange)
+//     {
+//         if ((millis() - exchangeStartTime) > AUTO_MODE_EXCHANGE_DELAY)
+//         {
+//             open();
+//             waitingForExchange = false;
+//             isValueOpen = true;
+//             lcd.clear();
+//         }
+//     }
+//     if (weight >= DISPENSER_WEIGHT)
+//     {
+//         close();
+//         isValueOpen = false;
+//         waitingForExchange = true;
+//         exchangeStartTime = millis();
+//     }
+// }
 
-void open()
-{
-  Serial.println("Opening Dispenser");
-}
+// void open()
+// {
+//     Serial.println("Opening Dispenser");
+// }
 
-void close()
-{
-  Serial.println("Closing Dispenser");
-}
+// void close()
+// {
+//     Serial.println("Closing Dispenser");
+// }
 
 void showInDisplay(String line1, String line2)
 {
-  if (lastDisplayText == line1 + line2)
-  {
-    return;
-  }
-  lcd.clear();
-  lastDisplayText = line1 + line2;
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print(line1);
-  lcd.setCursor(0, 1);
-  lcd.print(line2);
+    if (lastDisplayText == line1 + line2)
+    {
+        return;
+    }
+    lcd.clear();
+    lastDisplayText = line1 + line2;
+    lcd.setCursor(0, 0);
+    lcd.print(line1);
+    lcd.setCursor(0, 1);
+    lcd.print(line2);
+}
+
+String getModeName(Mode mode)
+{
+    switch (mode)
+    {
+    case AUTO:
+        return "AUTO";
+    case WEIGHTING:
+        return "WEIGHTING";
+    case MANUAL_SET:
+        return "MANUAL_SET";
+    case MANUAL_DISPENSE:
+        return "MANUAL_DISPENSE";
+    default:
+        return "UNKNOWN";
+    }
 }
