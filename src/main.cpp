@@ -34,7 +34,8 @@ bool waitingForExchange = false;
 unsigned long exchangeStartTime = 0;
 bool isValueOpen = false;
 String lastDisplayText = "";
-
+String manualModeState = ""; // SET, DISPENSE
+int manualDispenserCustomWeight = 0;
 
 float getWeight();
 void open();
@@ -78,7 +79,7 @@ void loop()
 {
   float weight = getWeight();
 
-  if (!waitingForExchange)
+  if (!waitingForExchange && !manualModeState)
   {
     // lcd section
     lcd.setCursor(0, 0);
@@ -87,10 +88,15 @@ void loop()
     lcd.setCursor(0, 1);
     lcd.print("Weight: ");
     lcd.print(weight);
-  } else if (currentMode == "AUTO") {
-    if ((millis() - exchangeStartTime) < (AUTO_MODE_EXCHANGE_DELAY / 2)) {
+  }
+  else if (currentMode == "AUTO")
+  {
+    if ((millis() - exchangeStartTime) < (AUTO_MODE_EXCHANGE_DELAY / 2))
+    {
       showInDisplay("Secure your", "Dispenser");
-    } else {
+    }
+    else
+    {
       showInDisplay("Waiting For", "Next Dispenser");
     }
   }
@@ -108,11 +114,56 @@ void loop()
   if (currentMode != lastmode)
   {
     lcd.clear();
+    close();
+    manualDispenserCustomWeight = 0;
+    manualModeState = "";
   }
 
   if (currentMode == "AUTO")
   {
     processAutoMode(weight);
+  }
+  else if (currentMode == "WEIGHTING" || currentMode == "MANUAL")
+  {
+    if (manualModeState == "")
+    {
+      Serial.println("Manual Mode");
+      bool isManualDispenserEnabled = digitalRead(MANUAL_DISPENSER_SWITCH) == LOW;
+      if (isManualDispenserEnabled)
+      {
+        Serial.println("Manual Mode Enabled");
+        manualModeState = "SET";
+      }
+    }
+    if (manualModeState == "SET")
+    {
+      bool isManualModeEnabled = digitalRead(MANUAL_MODE_SWITCH) == LOW;
+      if (isManualModeEnabled)
+      {
+        manualModeState = "DISPENSE";
+      }
+    }
+    if (manualModeState == "SET")
+    {
+      showInDisplay("Weight: " + manualDispenserCustomWeight, "Press + or -");
+      if (digitalRead(PLUS_SWITCH) == LOW)
+      {
+        manualDispenserCustomWeight++;
+      }
+      if (digitalRead(MINUS_SWITCH) == LOW)
+      {
+        manualDispenserCustomWeight--;
+      }
+    }
+    else if (manualModeState == "DISPENSE")
+    {
+      showInDisplay("Mode: MANUAL", "Weight: " + manualDispenserCustomWeight);
+      if (weight >= manualDispenserCustomWeight)
+      {
+        close();
+        manualModeState = "SET";
+      }
+    }
   }
 }
 
