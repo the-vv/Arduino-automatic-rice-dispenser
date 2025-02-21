@@ -6,6 +6,7 @@
 class Valve
 {
     int pin;
+    bool state;
 
 public:
     Valve(int pin)
@@ -16,11 +17,21 @@ public:
 
     void open()
     {
+        if (this->state)
+        {
+            return;
+        }
         digitalWrite(pin, HIGH);
+        this->state = true;
     }
     void close()
     {
+        if (!this->state)
+        {
+            return;
+        }
         digitalWrite(pin, LOW);
+        this->state = false;
     }
 };
 
