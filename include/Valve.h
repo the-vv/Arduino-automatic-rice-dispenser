@@ -5,14 +5,16 @@
 
 class Valve
 {
-    int pin;
+    uint8_t pin1;
+    uint8_t pin2;
     bool state;
+    uint8_t openDelay;
 
 public:
-    Valve(int pin)
+    Valve(uint8_t pin1, uint8_t pin2, uint8_t openDelay) : pin1(pin1), pin2(pin2), state(false), openDelay(openDelay)
     {
-        this->pin = pin;
-        pinMode(pin, OUTPUT);
+        pinMode(pin1, OUTPUT);
+        pinMode(pin2, OUTPUT);
     }
 
     void open()
@@ -21,8 +23,11 @@ public:
         {
             return;
         }
-        digitalWrite(pin, HIGH);
+        digitalWrite(pin1, HIGH);
+        digitalWrite(pin2, LOW);
         this->state = true;
+        delay(openDelay);
+        stop();
     }
     void close()
     {
@@ -30,8 +35,16 @@ public:
         {
             return;
         }
-        digitalWrite(pin, LOW);
+        digitalWrite(pin1, LOW);
+        digitalWrite(pin2, HIGH);
         this->state = false;
+        delay(openDelay);
+        stop();
+    }
+    void stop()
+    {
+        digitalWrite(pin1, LOW);
+        digitalWrite(pin2, LOW);
     }
 };
 
