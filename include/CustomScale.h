@@ -11,9 +11,9 @@ class CustomScale
 public:
     CustomScale(int doutPin, int sckPin, float calibrationFactor)
     {
-        // scale.begin(doutPin, sckPin);
-        // scale.set_scale(calibrationFactor); // This value is obtained by using the SparkFun_HX711_Calibration sketch
-        // scale.tare();
+        scale.begin(doutPin, sckPin);
+        scale.set_scale(calibrationFactor); // This value is obtained by using the SparkFun_HX711_Calibration sketch
+        scale.tare();
     }
 
     float getWeight()

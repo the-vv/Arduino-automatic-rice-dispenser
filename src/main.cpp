@@ -8,11 +8,12 @@
 #include <CustomScale.h>
 
 // PARAMETERS
-#define CALIBRATION_FACTOR -7050.0 // This value is obtained using the SparkFun_HX711_Calibration sketch
-#define DISPENSER_WEIGHT 2.5         // This is the weight of the rice that will be dispensed in kg
-#define INITIAL_LOADING_DELAY 5000
-#define AUTO_MODE_EXCHANGE_DELAY 20000
-#define VALVE_OPEN_DELAY 3000
+#define CALIBRATION_FACTOR -7050.0     // This value is obtained using the SparkFun_HX711_Calibration sketch
+#define DISPENSER_WEIGHT 50            // This is the weight of the rice that will be dispensed in kg for auto mode
+#define INITIAL_LOADING_DELAY 5000     // This is for the initial loading of the rice at startup
+#define AUTO_MODE_EXCHANGE_DELAY 20000 // This is the delay between the exchange of the container in auto mode
+#define VALVE_OPEN_DELAY 3000          // this is the time for which the valve will be open and close
+#define DISPENSER_WEIGHT_OFFSET 1      // this is the offset for the dispenser weight in kg to start valve closing
 
 // Sensors Pins
 #define LOADCELL_DOUT_PIN_1 3
@@ -32,16 +33,16 @@
 // the first parameter is  the I2C address
 // the second parameter is how many rows are on your screen
 // the  third parameter is how many columns are on your screen
-LiquidCrystal_I2C lcd(0x27, 16, 2);                                                       // set the LCD address to 0x27 for a 16 chars and 2 line display
-HX711 scale;                                                                              // Create a scale instance
-Valve valve(VALVE_PIN1, VALVE_PIN2, VALVE_OPEN_DELAY);                                    // Create a valve instance
-PressButton manualDispenserSwitch(MANUAL_DISPENSER_SWITCH);                               // Create a button instance
-PressButton plusSwitch(PLUS_SWITCH);                                                      // Create a button instance
-PressButton minusSwitch(MINUS_SWITCH);                                                    // Create a button instance
-CustomScale scale1(LOADCELL_DOUT_PIN_1, LOADCELL_SCK_PIN_1, CALIBRATION_FACTOR);          // Create a scale instance
-CustomScale scale2(LOADCELL_DOUT_PIN_2, LOADCELL_SCK_PIN_2, CALIBRATION_FACTOR);          // Create a scale instance
-AlternateScaling alternateScaling(scale1, scale2);                                        // Create an alternate scaling instance
-Automatic automatic(valve, DISPENSER_WEIGHT, AUTO_MODE_EXCHANGE_DELAY, alternateScaling); // Create an automatic instance
+LiquidCrystal_I2C lcd(0x27, 16, 2);                                                                                // set the LCD address to 0x27 for a 16 chars and 2 line display
+HX711 scale;                                                                                                       // Create a scale instance
+Valve valve(VALVE_PIN1, VALVE_PIN2, VALVE_OPEN_DELAY);                                                             // Create a valve instance
+PressButton manualDispenserSwitch(MANUAL_DISPENSER_SWITCH);                                                        // Create a button instance
+PressButton plusSwitch(PLUS_SWITCH);                                                                               // Create a button instance
+PressButton minusSwitch(MINUS_SWITCH);                                                                             // Create a button instance
+CustomScale scale1(LOADCELL_DOUT_PIN_1, LOADCELL_SCK_PIN_1, CALIBRATION_FACTOR);                                   // Create a scale instance
+CustomScale scale2(LOADCELL_DOUT_PIN_2, LOADCELL_SCK_PIN_2, CALIBRATION_FACTOR);                                   // Create a scale instance
+AlternateScaling alternateScaling(scale1, scale2);                                                                 // Create an alternate scaling instance
+Automatic automatic(valve, DISPENSER_WEIGHT, DISPENSER_WEIGHT_OFFSET, AUTO_MODE_EXCHANGE_DELAY, alternateScaling); // Create an automatic instance
 
 enum Mode
 {
@@ -154,7 +155,7 @@ void loop()
     {
         showInDisplay("Mode: " + getModeName(currentMode), "Weight: " + String(weight) + "/" + String(manualDispenserCustomWeight));
         valve.open();
-        if (weight >= manualDispenserCustomWeight)
+        if (weight >= (manualDispenserCustomWeight - DISPENSER_WEIGHT_OFFSET))
         {
             valve.close();
             currentMode = MANUAL_SET;

@@ -12,13 +12,15 @@ class Automatic
     bool waitingForExchange = false;
     unsigned long exchangeStartTime = 0;
     float dispenserWeight;
+    float dispenserWeightOffset;
     unsigned long exchangeDelay;
     void (*showInDisplay)(String, String);
 
 public:
-    Automatic(Valve &valve, float dispenserWeight, unsigned long exchangeDelay, AlternateScaling &alternateScaling) : valve(valve), alternateScaling(alternateScaling)
+    Automatic(Valve &valve, float dispenserWeight, float dispenserWeightOffset, unsigned long exchangeDelay, AlternateScaling &alternateScaling) : valve(valve), alternateScaling(alternateScaling)
     {
         this->dispenserWeight = dispenserWeight;
+        this->dispenserWeightOffset = dispenserWeightOffset;
         this->exchangeDelay = exchangeDelay;
     }
     void reset()
@@ -55,7 +57,7 @@ public:
         {
             valve.open(); // make sure the valve is open
             showInDisplay("Mode: AUTO", "Weight: " + String(weight));
-            if (weight >= dispenserWeight)
+            if (weight >= (dispenserWeight - dispenserWeightOffset))
             {
                 // close the valve and start the exchange delay if the weight is greater than the dispenser set weight
                 valve.close();
