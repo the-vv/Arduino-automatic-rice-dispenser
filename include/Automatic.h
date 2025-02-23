@@ -55,13 +55,13 @@ public:
         {
             valve.open(); // make sure the valve is open
             showInDisplay("Mode: AUTO", "Weight: " + String(weight));
-        }
-        if (weight >= dispenserWeight)
-        {
-            // close the valve and start the exchange delay if the weight is greater than the dispenser set weight
-            valve.close();
-            waitingForExchange = true;
-            exchangeStartTime = millis();
+            if (weight >= dispenserWeight)
+            {
+                // close the valve and start the exchange delay if the weight is greater than the dispenser set weight
+                valve.close();
+                waitingForExchange = true;
+                exchangeStartTime = millis();
+            }
         }
     }
 };

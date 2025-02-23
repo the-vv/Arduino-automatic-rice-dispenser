@@ -9,7 +9,7 @@
 
 // PARAMETERS
 #define CALIBRATION_FACTOR -7050.0 // This value is obtained using the SparkFun_HX711_Calibration sketch
-#define DISPENSER_WEIGHT 2         // This is the weight of the rice that will be dispensed in kg
+#define DISPENSER_WEIGHT 2.5         // This is the weight of the rice that will be dispensed in kg
 #define INITIAL_LOADING_DELAY 5000
 #define AUTO_MODE_EXCHANGE_DELAY 20000
 #define VALVE_OPEN_DELAY 3000
@@ -84,6 +84,8 @@ void setup()
 }
 void loop()
 {
+    valve.update();
+
     float weight = alternateScaling.getPrimaryWeight();
 
     // Check for mode changes and update the current mode
@@ -168,6 +170,7 @@ void showInDisplay(String line1, String line2)
     {
         return;
     }
+    Serial.println(line1 + " | " + line2);
     lcd.clear();
     lastDisplayText = line1 + line2;
     lcd.setCursor(0, 0);

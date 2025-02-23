@@ -11,16 +11,17 @@ class CustomScale
 public:
     CustomScale(int doutPin, int sckPin, float calibrationFactor)
     {
-        scale.begin(doutPin, sckPin);
-        scale.set_scale(calibrationFactor); // This value is obtained by using the SparkFun_HX711_Calibration sketch
-        scale.tare();
+        // scale.begin(doutPin, sckPin);
+        // scale.set_scale(calibrationFactor); // This value is obtained by using the SparkFun_HX711_Calibration sketch
+        // scale.tare();
     }
 
     float getWeight()
     {
-        float scaleLbs = scale.get_units();
-        float scaleKg = scaleLbs * 0.453592;
-        return -scaleKg;
+        // float scaleLbs = scale.get_units();
+        // float scaleKg = scaleLbs * 0.453592;
+        // return -scaleKg;
+        return 2.0;
     }
 };
 
