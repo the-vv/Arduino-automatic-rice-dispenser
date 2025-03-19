@@ -8,18 +8,19 @@
 #include <CustomScale.h>
 
 // PARAMETERS
-#define CALIBRATION_FACTOR -7050.0     // This value is obtained using the SparkFun_HX711_Calibration sketch
-#define DISPENSER_WEIGHT 20           // This is the weight of the rice that will be dispensed in kg for auto mode
-#define INITIAL_LOADING_DELAY 5000     // This is for the initial loading of the rice at startup
-#define AUTO_MODE_EXCHANGE_DELAY 20000 // This is the delay between the exchange of the container in auto mode
-#define VALVE_OPEN_DELAY 1000          // this is the time for which the valve will be open and close
-#define DISPENSER_WEIGHT_OFFSET 1      // this is the offset for the dispenser weight in kg to start valve closing
+#define CALIBRATION_FACTOR -7050.0           // This value is obtained using the SparkFun_HX711_Calibration sketch
+#define DISPENSER_WEIGHT 20                  // This is the weight of the rice that will be dispensed in kg for auto mode
+#define INITIAL_LOADING_DELAY 5000           // This is for the initial loading of the rice at startup
+#define AUTO_MODE_EXCHANGE_DELAY 20000       // This is the delay between the exchange of the container in auto mode
+#define VALVE_OPEN_DELAY 1000                // this is the time for which the valve will be open and close
+#define DISPENSER_WEIGHT_OFFSET 1            // this is the offset for the dispenser weight in kg to start valve closing
+#define WEIGHT_MODE_TO_AUTO_MODE_DELAY 10000 // this is the delay to wait when switch back to auto mode from weight mode
 
 // Sensors Pins
-#define LOADCELL_DOUT_PIN_1 3
-#define LOADCELL_SCK_PIN_1 2
-#define LOADCELL_DOUT_PIN_2 5
-#define LOADCELL_SCK_PIN_2 4
+#define LOADCELL_DOUT_PIN_1 5
+#define LOADCELL_SCK_PIN_1 4
+#define LOADCELL_DOUT_PIN_2 3
+#define LOADCELL_SCK_PIN_2 2
 
 // Switches and Buttons Pins
 #define AUTO_MODE_SWITCH 8         // if this is on, the system will automatically dispense the rice with preset weight, else the system will just act like a weighing machine
@@ -34,17 +35,24 @@
 // the first parameter is  the I2C address
 // the second parameter is how many rows are on your screen
 // the  third parameter is how many columns are on your screen
-LiquidCrystal_I2C lcd(0x27, 16, 2);                                                                                // set the LCD address to 0x27 for a 16 chars and 2 line display
-HX711 scale;                                                                                                       // Create a scale instance
-Valve valve(VALVE_PIN1, VALVE_PIN2, VALVE_OPEN_DELAY);                                                             // Create a valve instance
-PressButton manualDispenserSwitch(MANUAL_DISPENSER_SWITCH);                                                        // Create a button instance
-PressButton plusSwitch(PLUS_SWITCH);                                                                               // Create a button instance
-PressButton minusSwitch(MINUS_SWITCH);                                                                             // Create a button instance
+LiquidCrystal_I2C lcd(0x27, 16, 2);                         // set the LCD address to 0x27 for a 16 chars and 2 line display
+HX711 scale;                                                // Create a scale instance
+Valve valve(VALVE_PIN1, VALVE_PIN2, VALVE_OPEN_DELAY);      // Create a valve instance
+PressButton manualDispenserSwitch(MANUAL_DISPENSER_SWITCH); // Create a button instance
+PressButton plusSwitch(PLUS_SWITCH);                        // Create a button instance
+PressButton minusSwitch(MINUS_SWITCH);                      // Create a button instance
 PressButton emergencySwitch(EMERGENCY_SWITCH);
-CustomScale scale1(LOADCELL_DOUT_PIN_1, LOADCELL_SCK_PIN_1, CALIBRATION_FACTOR);                                   // Create a scale instance
-CustomScale scale2(LOADCELL_DOUT_PIN_2, LOADCELL_SCK_PIN_2, CALIBRATION_FACTOR);                                   // Create a scale instance
-AlternateScaling alternateScaling(scale1, scale2);                                                                 // Create an alternate scaling instance
-Automatic automatic(valve, DISPENSER_WEIGHT, DISPENSER_WEIGHT_OFFSET, AUTO_MODE_EXCHANGE_DELAY, alternateScaling); // Create an automatic instance
+CustomScale scale1(LOADCELL_DOUT_PIN_1, LOADCELL_SCK_PIN_1, CALIBRATION_FACTOR, false); // Create a scale instance
+CustomScale scale2(LOADCELL_DOUT_PIN_2, LOADCELL_SCK_PIN_2, CALIBRATION_FACTOR, true);  // Create a scale instance
+AlternateScaling alternateScaling(scale1, scale2);                                      // Create an alternate scaling instance
+Automatic automatic(
+    valve,
+    DISPENSER_WEIGHT,
+    DISPENSER_WEIGHT_OFFSET,
+    AUTO_MODE_EXCHANGE_DELAY,
+    alternateScaling,
+    WEIGHT_MODE_TO_AUTO_MODE_DELAY
+); // Create an automatic instance
 
 enum Mode
 {
@@ -88,17 +96,22 @@ void loop()
 {
     valve.update();
 
-    if(emergencySwitch.isPressed()) {
-        if (!isPausePressed) {
+    if (emergencySwitch.isPressed())
+    {
+        if (!isPausePressed)
+        {
             isPausePressed = true;
             automatic.reset();
             currentMode = AUTO;
             manualDispenserCustomWeight = DISPENSER_WEIGHT;
-        } else {
+        }
+        else
+        {
             isPausePressed = false;
         }
     }
-    if (isPausePressed) {
+    if (isPausePressed)
+    {
         showInDisplay("STOPPED", "Press to Restart");
         return;
     }

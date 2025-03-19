@@ -15,9 +15,11 @@ class Automatic
     float dispenserWeightOffset;
     unsigned long exchangeDelay;
     void (*showInDisplay)(String, String);
+    unsigned long switchModeDelayStartTime = 0;
+    unsigned long switchModeDelay;
 
 public:
-    Automatic(Valve &valve, float dispenserWeight, float dispenserWeightOffset, unsigned long exchangeDelay, AlternateScaling &alternateScaling) : valve(valve), alternateScaling(alternateScaling)
+    Automatic(Valve &valve, float dispenserWeight, float dispenserWeightOffset, unsigned long exchangeDelay, AlternateScaling &alternateScaling, unsigned long switchModeDelay) : valve(valve), alternateScaling(alternateScaling), switchModeDelay(switchModeDelay)
     {
         this->dispenserWeight = dispenserWeight;
         this->dispenserWeightOffset = dispenserWeightOffset;
@@ -28,6 +30,11 @@ public:
         waitingForExchange = false;
         exchangeStartTime = 0;
         valve.close();
+        switchModeDelayStartTime = 0;
+    }
+    void startSwitchModeDelay()
+    {
+        switchModeDelayStartTime = millis();
     }
     void setLcdDisplayCallback(void (*showInDisplay)(String, String))
     {
@@ -35,6 +42,15 @@ public:
     }
     void processAutoMode()
     {
+        if (switchModeDelayStartTime > 0)
+        {
+            if ((millis() - switchModeDelayStartTime) < switchModeDelay)
+            {
+                showInDisplay("Switching AUTO", "In " + String((int)((switchModeDelay - (millis() - switchModeDelayStartTime)) / 1000)) + " Seconds");
+                return;
+            }
+            switchModeDelayStartTime = 0;
+        }
         int weight = alternateScaling.getWeight();
         if (waitingForExchange)
         {

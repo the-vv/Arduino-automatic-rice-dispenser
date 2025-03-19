@@ -7,9 +7,10 @@
 class CustomScale
 {
     HX711 scale;
+    bool revertSign = false;
 
 public:
-    CustomScale(int doutPin, int sckPin, float calibrationFactor)
+    CustomScale(int doutPin, int sckPin, float calibrationFactor, bool revertSign) : revertSign(revertSign)
     {
         scale.begin(doutPin, sckPin);
         scale.set_scale(calibrationFactor); // This value is obtained by using the SparkFun_HX711_Calibration sketch
@@ -20,8 +21,7 @@ public:
     {
         float scaleLbs = scale.get_units();
         float scaleKg = scaleLbs * 0.453592;
-        return (int)-scaleKg;
-        // return 2.0;
+        return revertSign ? (int)-scaleKg : (int)scaleKg;
     }
 };
 

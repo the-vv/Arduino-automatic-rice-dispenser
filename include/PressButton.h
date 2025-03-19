@@ -35,18 +35,4 @@ public:
     }
 };
 
-// void setup()
-// {
-//     Serial.begin(9600);
-// }
-
-// void loop()
-// {
-//     // Check if the manual dispenser switch is pressed and released
-//     if (manualDispenserSwitch.isPressedAndReleased())
-//     {
-//         Serial.println("Manual Dispenser Switch pressed and released!");
-//     }
-// }
-
 #endif
