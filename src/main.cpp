@@ -74,6 +74,8 @@ String getModeName(Mode mode);
 
 void setup()
 {
+    Serial.begin(9600);
+    Serial.println("System is starting...");
 
     // Setup Pins
     pinMode(AUTO_MODE_SWITCH, INPUT_PULLUP);
@@ -108,6 +110,7 @@ void loop()
         else
         {
             isPausePressed = false;
+            automatic.startSwitchModeDelay();
         }
     }
     if (isPausePressed)
@@ -154,6 +157,12 @@ void loop()
         valve.close();
         automatic.reset();
         Serial.println("Switched to " + getModeName(currentMode));
+
+        // If the current mode is auto, start the switch mode delay because we came back from other mode
+        if (currentMode == AUTO)
+        {
+            automatic.startSwitchModeDelay();
+        }
     }
 
     // Act based on the current mode
