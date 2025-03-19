@@ -35,7 +35,7 @@ public:
     }
     void processAutoMode()
     {
-        float weight = alternateScaling.getWeight();
+        int weight = alternateScaling.getWeight();
         if (waitingForExchange)
         {
             if ((millis() - exchangeStartTime) < (exchangeDelay / 2))

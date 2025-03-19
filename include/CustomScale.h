@@ -16,12 +16,12 @@ public:
         scale.tare();
     }
 
-    float getWeight()
+    int getWeight()
     {
-        // float scaleLbs = scale.get_units();
-        // float scaleKg = scaleLbs * 0.453592;
-        // return -scaleKg;
-        return 2.0;
+        float scaleLbs = scale.get_units();
+        float scaleKg = scaleLbs * 0.453592;
+        return (int)-scaleKg;
+        // return 2.0;
     }
 };
 
