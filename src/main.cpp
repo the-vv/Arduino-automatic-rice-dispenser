@@ -42,8 +42,8 @@ PressButton manualDispenserSwitch(MANUAL_DISPENSER_SWITCH); // Create a button i
 PressButton plusSwitch(PLUS_SWITCH);                        // Create a button instance
 PressButton minusSwitch(MINUS_SWITCH);                      // Create a button instance
 PressButton emergencySwitch(EMERGENCY_SWITCH);
-CustomScale scale1(LOADCELL_DOUT_PIN_1, LOADCELL_SCK_PIN_1, CALIBRATION_FACTOR, false); // Create a scale instance
-CustomScale scale2(LOADCELL_DOUT_PIN_2, LOADCELL_SCK_PIN_2, CALIBRATION_FACTOR, true);  // Create a scale instance
+CustomScale scale1(LOADCELL_DOUT_PIN_1, LOADCELL_SCK_PIN_1, CALIBRATION_FACTOR, true); // Create a scale instance
+CustomScale scale2(LOADCELL_DOUT_PIN_2, LOADCELL_SCK_PIN_2, CALIBRATION_FACTOR, false);  // Create a scale instance
 AlternateScaling alternateScaling(scale1, scale2);                                      // Create an alternate scaling instance
 Automatic automatic(
     valve,
@@ -172,7 +172,8 @@ void loop()
     }
     else if (currentMode == WEIGHTING)
     {
-        showInDisplay("Mode: " + getModeName(currentMode), "Weight: " + String(weight));
+        int weightSecondary = alternateScaling.getSecondaryWeight();
+        showInDisplay("Mode: " + getModeName(currentMode), "Weight: " + String(weightSecondary));
     }
     else if (currentMode == MANUAL_SET)
     {
